@@ -1,7 +1,10 @@
-import { Activity, Zap } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Activity, Zap, Loader2 } from 'lucide-react';
+import { getModels } from '../lib/api';
+import type { Model } from '../lib/supabase';
 
 interface ModelSelectionProps {
-  onSelectModel: (model: 'normal' | 'optuna') => void;
+  onSelectModel: (modelId: string, modelName: string) => void;
 }
 
 interface ModelCardProps {
@@ -60,6 +63,41 @@ function ModelCard({ icon, title, description, metrics, recommended, onClick }: 
 }
 
 export default function ModelSelection({ onSelectModel }: ModelSelectionProps) {
+  const [models, setModels] = useState<Model[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchModels() {
+      try {
+        const data = await getModels();
+        setModels(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load models');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchModels();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4 text-red-400">
+        {error}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-12">
@@ -70,26 +108,35 @@ export default function ModelSelection({ onSelectModel }: ModelSelectionProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <ModelCard
-          icon={<Activity className="w-6 h-6" />}
-          title="Modelo Normal"
-          description="Modelo padrão com boa performance para uso geral"
-          metrics={[{ label: 'Acurácia', value: '87.1%', color: 'green' }]}
-          onClick={() => onSelectModel('normal')}
-        />
+        {models.map((model) => {
+          const metrics = [
+            { label: 'Acurácia', value: `${model.accuracy}%`, color: 'green' },
+          ];
 
-        <ModelCard
-          icon={<Zap className="w-6 h-6" />}
-          title="Modelo Optuna"
-          description="Modelo otimizado com hiperparâmetros ajustados"
-          metrics={[
-            { label: 'Acurácia', value: '93.9%', color: 'green' },
-            { label: 'AUC', value: '0.983', color: 'blue' },
-            { label: 'Trials', value: '100' },
-          ]}
-          recommended
-          onClick={() => onSelectModel('optuna')}
-        />
+          if (model.auc) {
+            metrics.push({ label: 'AUC', value: model.auc.toFixed(3), color: 'blue' });
+          }
+
+          if (model.trials) {
+            metrics.push({ label: 'Trials', value: model.trials.toString() });
+          }
+
+          const icon = model.name === 'optuna' ?
+            <Zap className="w-6 h-6" /> :
+            <Activity className="w-6 h-6" />;
+
+          return (
+            <ModelCard
+              key={model.id}
+              icon={icon}
+              title={model.display_name}
+              description={model.description}
+              metrics={metrics}
+              recommended={model.is_recommended}
+              onClick={() => onSelectModel(model.id, model.name)}
+            />
+          );
+        })}
       </div>
     </div>
   );

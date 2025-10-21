@@ -5,10 +5,10 @@ import Calibration from './components/Calibration';
 
 function App() {
   const [currentView, setCurrentView] = useState<'selection' | 'calibration'>('selection');
-  const [selectedModel, setSelectedModel] = useState<'normal' | 'optuna' | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
 
-  const handleModelSelect = (model: 'normal' | 'optuna') => {
-    setSelectedModel(model);
+  const handleModelSelect = (modelId: string, modelName: string) => {
+    setSelectedModelId(modelId);
     setCurrentView('calibration');
   };
 
@@ -36,8 +36,8 @@ function App() {
         {currentView === 'selection' && (
           <ModelSelection onSelectModel={handleModelSelect} />
         )}
-        {currentView === 'calibration' && selectedModel && (
-          <Calibration onBack={() => setCurrentView('selection')} />
+        {currentView === 'calibration' && selectedModelId && (
+          <Calibration modelId={selectedModelId} onBack={() => setCurrentView('selection')} />
         )}
       </main>
     </div>
